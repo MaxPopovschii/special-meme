@@ -6,7 +6,7 @@ class Block {
         this.index = index;
         this.previousHash = previousHash;
         this.timestamp = timestamp;
-        this.data = data; // transactions or contract calls
+        this.data = data;
         this.hash = hash;
         this.nonce = nonce;
     }
@@ -36,6 +36,15 @@ class Blockchain {
     }
 
     addTransaction(transaction) {
+        if (transaction.from && transaction.signature) {
+            const Wallet = require('./wallet');
+            const isValid = Wallet.verify(
+                { from: transaction.from, to: transaction.to, amount: transaction.amount },
+                transaction.signature,
+                transaction.from // ora è la publicKey
+            );
+            if (!isValid) throw new Error('Invalid transaction signature');
+        }
         this.pendingTransactions.push(transaction);
     }
 
@@ -59,7 +68,7 @@ class Blockchain {
         const block = new Block(index, previousHash, timestamp, data, hash, nonce);
         this.chain.push(block);
 
-        // Reward miner
+        // Ricompensa il miner e mina subito la ricompensa
         this.pendingTransactions = [{
             from: null,
             to: minerAddress,

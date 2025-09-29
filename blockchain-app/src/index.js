@@ -12,19 +12,23 @@ const contract = new SmartContract('SimpleStorage', alice.address);
 contract.deploy({ value: 0 });
 chain.deployContract(contract);
 
+// Mining iniziale per dare saldo ad Alice
+chain.minePendingTransactions(alice.address);
+
 // Alice invia 10 a Bob
 const tx = {
-    from: alice.publicKey, // trasmetti la publicKey
+    from: alice.address,
     to: bob.address,
     amount: 10,
-    signature: alice.sign({ from: alice.publicKey, to: bob.address, amount: 10 })
+    publicKey: alice.publicKey,
+    signature: alice.sign({ from: alice.address, to: bob.address, amount: 10 })
 };
 chain.addTransaction(tx);
 
-// Mining
+// Mining della transazione
 chain.minePendingTransactions(alice.address);
-// Mina anche la transazione di ricompensa
 chain.minePendingTransactions(alice.address);
+p2p.broadcastChain();
 
 console.log('Alice balance:', chain.getBalance(alice.address));
 console.log('Bob balance:', chain.getBalance(bob.address));
@@ -40,3 +44,34 @@ p2p.listen(PORT);
 
 // Quando aggiungi una transazione, puoi broadcastarla:
 // p2p.broadcastTransaction(tx);
+
+if (process.env.PEERS) {
+    process.env.PEERS.split(',').forEach(peer => p2p.connectToPeer(peer));
+}
+
+const readline = require('readline').createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+readline.on('line', (input) => {
+    const [cmd, ...args] = input.split(' ');
+    if (cmd === 'send') {
+        const amount = parseInt(args[0]);
+        const tx = {
+            from: alice.address,
+            to: bob.address,
+            amount,
+            publicKey: alice.publicKey,
+            signature: alice.sign({ from: alice.address, to: bob.address, amount })
+        };
+        chain.addTransaction(tx);
+        p2p.broadcastTransaction(tx);
+        console.log('Transaction sent!');
+    }
+    if (cmd === 'mine') {
+        chain.minePendingTransactions(alice.address);
+        p2p.broadcastChain();
+        console.log('Block mined!');
+    }
+});

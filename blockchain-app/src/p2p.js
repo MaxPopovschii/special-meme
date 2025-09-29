@@ -37,6 +37,10 @@ class P2PServer {
         this.sockets.forEach(ws => ws.send(JSON.stringify({ type: 'TX', tx })));
     }
 
+    broadcastChain() {
+        this.sockets.forEach(ws => ws.send(JSON.stringify({ type: 'CHAIN', chain: this.blockchain.chain })));
+    }
+
     connectToPeer(address) {
         const ws = new WebSocket(address);
         ws.on('open', () => this.connectSocket(ws));

@@ -36,14 +36,29 @@ class Blockchain {
     }
 
     addTransaction(transaction) {
-        if (transaction.from && transaction.signature) {
+        if (transaction.from && transaction.signature && transaction.publicKey) {
             const Wallet = require('./wallet');
+            // Verifica che l'address sia l'hash della publicKey
+            const addressFromPublicKey = crypto.createHash('sha256').update(transaction.publicKey).digest('hex');
+            if (transaction.from !== addressFromPublicKey) {
+                throw new Error('Address does not match publicKey');
+            }
+            // Verifica la firma
             const isValid = Wallet.verify(
                 { from: transaction.from, to: transaction.to, amount: transaction.amount },
                 transaction.signature,
-                transaction.from // ora è la publicKey
+                transaction.publicKey
             );
             if (!isValid) throw new Error('Invalid transaction signature');
+            // Controllo saldo
+            if (this.getBalance(transaction.from) < transaction.amount) {
+                throw new Error('Insufficient balance');
+            }
+        } else if (transaction.from) {
+            // Controllo saldo per reward e transazioni senza firma
+            if (this.getBalance(transaction.from) < transaction.amount) {
+                throw new Error('Insufficient balance');
+            }
         }
         this.pendingTransactions.push(transaction);
     }

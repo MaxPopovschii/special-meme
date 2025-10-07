@@ -68,28 +68,33 @@ class Blockchain {
     }
 
     minePendingTransactions(minerAddress) {
+        // Inserisci la reward SEMPRE nel blocco minato
+        const rewardTx = {
+            from: null,
+            to: minerAddress,
+            amount: 1,
+            type: 'reward'
+        };
+
+        // Crea il blocco con tutte le pending + reward
+        const transactionsToMine = [...this.pendingTransactions, rewardTx];
+
         const timestamp = Date.now();
-        const data = this.pendingTransactions;
         let nonce = 0;
         let hash;
         const index = this.chain.length;
         const previousHash = this.getLatestBlock().hash;
 
         do {
-            hash = this.calculateHash(index, previousHash, timestamp, data, nonce);
+            hash = this.calculateHash(index, previousHash, timestamp, transactionsToMine, nonce);
             nonce++;
         } while (hash.substring(0, this.difficulty) !== Array(this.difficulty + 1).join("0"));
 
-        const block = new Block(index, previousHash, timestamp, data, hash, nonce);
+        const block = new Block(index, previousHash, timestamp, transactionsToMine, hash, nonce);
         this.chain.push(block);
 
-        // Ricompensa il miner e mina subito la ricompensa
-        this.pendingTransactions = [{
-            from: null,
-            to: minerAddress,
-            amount: 1,
-            type: 'reward'
-        }];
+        // Svuota le pending dopo aver minato
+        this.pendingTransactions = [];
     }
 
     isChainValid() {

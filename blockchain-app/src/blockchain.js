@@ -14,15 +14,27 @@ class Block {
 
 class Blockchain {
     constructor(difficulty = 3) {
-        this.chain = [this.createGenesisBlock()];
         this.difficulty = difficulty;
         this.pendingTransactions = [];
         this.contracts = [];
+        this.chain = [this.createGenesisBlock()];
     }
 
     createGenesisBlock() {
         const timestamp = Date.now();
-        return new Block(0, "0", timestamp, "Genesis Block", this.calculateHash(0, "0", timestamp, "Genesis Block", 0), 0);
+        const index = 0;
+        const previousHash = "0";
+        const data = "Genesis Block";
+        let nonce = 0;
+        let hash;
+
+        // Mine the genesis block
+        do {
+            hash = this.calculateHash(index, previousHash, timestamp, data, nonce);
+            nonce++;
+        } while (hash.substring(0, this.difficulty) !== Array(this.difficulty + 1).join("0"));
+
+        return new Block(index, previousHash, timestamp, data, hash, nonce - 1);
     }
 
     calculateHash(index, previousHash, timestamp, data, nonce) {
@@ -90,7 +102,7 @@ class Blockchain {
             nonce++;
         } while (hash.substring(0, this.difficulty) !== Array(this.difficulty + 1).join("0"));
 
-        const block = new Block(index, previousHash, timestamp, transactionsToMine, hash, nonce);
+        const block = new Block(index, previousHash, timestamp, transactionsToMine, hash, nonce - 1);
         this.chain.push(block);
 
         // Svuota le pending dopo aver minato
@@ -102,6 +114,7 @@ class Blockchain {
             const currentBlock = this.chain[i];
             const previousBlock = this.chain[i - 1];
 
+            // Validate block hash
             if (currentBlock.hash !== this.calculateHash(
                 currentBlock.index,
                 currentBlock.previousHash,
@@ -112,8 +125,43 @@ class Blockchain {
                 return false;
             }
 
+            // Validate block linkage
             if (currentBlock.previousHash !== previousBlock.hash) {
                 return false;
+            }
+
+            // Validate proof of work
+            if (currentBlock.hash.substring(0, this.difficulty) !== Array(this.difficulty + 1).join("0")) {
+                return false;
+            }
+
+            // Validate transactions in the block
+            if (Array.isArray(currentBlock.data)) {
+                for (const tx of currentBlock.data) {
+                    // Skip validation for mining rewards (no from address) and reward types
+                    if (!tx.from || tx.type === 'reward') continue;
+
+                    // Validate signature if present (should be present for user transactions)
+                    if (tx.signature && tx.publicKey) {
+                        const Wallet = require('./wallet');
+                        const addressFromPublicKey = crypto.createHash('sha256').update(tx.publicKey).digest('hex');
+                        
+                        // Check if address matches public key
+                        if (tx.from !== addressFromPublicKey) {
+                            return false;
+                        }
+
+                        // Verify signature
+                        const isValid = Wallet.verify(
+                            { from: tx.from, to: tx.to, amount: tx.amount },
+                            tx.signature,
+                            tx.publicKey
+                        );
+                        if (!isValid) {
+                            return false;
+                        }
+                    }
+                }
             }
         }
         return true;

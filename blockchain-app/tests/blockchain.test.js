@@ -33,7 +33,7 @@ describe('Blockchain', () => {
         // Quarto mining: reward della terza mining accreditata
         chain.minePendingTransactions(alice.address);
 
-        expect(chain.getBalance(alice.address)).toBe(3 - 1); // 3 reward, -1 sent
+        expect(chain.getBalance(alice.address)).toBe(4 - 1); // 4 mining = 4 reward, -1 sent
         expect(chain.getBalance(bob.address)).toBe(1);
         expect(chain.isChainValid()).toBe(true);
     });

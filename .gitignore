@@ -47,3 +47,6 @@ blockchain.json
 *.tmp
 tmp/
 temp/
+node_modules/
+coverage/
+.env
